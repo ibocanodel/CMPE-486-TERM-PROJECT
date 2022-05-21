@@ -1063,7 +1063,8 @@ class World(object):
                 'Hero Speed:          %3d km/h' % hero_speed_text,
                 'Hero Affected by:',
                 '  Traffic Light: %12s' % affected_traffic_light_text,
-                '  Speed Limit:       %3d km/h' % affected_speed_limit_text
+                '  Speed Limit:       %3d km/h' % affected_speed_limit_text,
+                "Ego Location:        %14s" % self.hero_actor.get_location(),
             ]
         else:
             hero_mode_text = ['Hero Mode:                OFF']
@@ -1523,7 +1524,7 @@ def game_loop(args):
         # Init
         input_control = InputControl(TITLE_INPUT)
         hud = HUD(TITLE_HUD, args.width, args.height)
-        world = World(TITLE_WORLD, args, timeout=2.0)
+        world = World(TITLE_WORLD, args, timeout=20.0)
 
         # For each module, assign other modules that are going to be used inside that module
         input_control.start(hud, world)
@@ -1601,7 +1602,7 @@ def main():
     argparser.add_argument(
         '--map',
         metavar='TOWN',
-        default=None,
+        default='TOWN06',
         help='start a new episode at the given TOWN')
     argparser.add_argument(
         '--no-rendering',

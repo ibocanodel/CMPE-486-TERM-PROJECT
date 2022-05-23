@@ -2,6 +2,7 @@
 import math
 
 import numpy as np
+from .utils import *
 
 
 # Function from https://stackoverflow.com/a/59582674/2609987
@@ -102,7 +103,7 @@ class PurePursuit:
 
         track_point = get_target_point(look_ahead_distance, waypoints)
         if track_point is None:
-            raise RuntimeError
+            raise EndOfRoadException
 
         alpha = np.arctan2(track_point[1], track_point[0])
 
@@ -156,13 +157,15 @@ class PurePursuitController:
         # Translate absolute waypoints to actor's frame  filter
         # And discard waypoints behind the actor
         relative_points = [np.array([0, 0])]
+        my_relative_points = []
         for wp in waypoints:
             point = np.matmul(np.array([wp.x - p.x, wp.y - p.y]), R)
             if point[0] > 0:
                 relative_points.append(point)
-
+                my_relative_points.append(wp)
         accel = self.pid.get_control(target_speed, current_speed, dt)
 
         steer = self.pure_pursuit.get_control(relative_points, current_speed)
 
-        return accel, steer
+        return accel, steer, my_relative_points
+

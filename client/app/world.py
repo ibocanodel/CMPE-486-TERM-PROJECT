@@ -7,6 +7,7 @@ import carla
 import math
 import glob
 import logging
+from .enums import *
 
 from carla import TrafficLightState as tls
 
@@ -668,7 +669,9 @@ class World(object):
         self.surface_size = [0, 0]
         self.prev_scaled_size = 0
         self.scaled_size = 0
-
+        self.v1Vehicle = None
+        self.v2Vehicle = None
+        self.heroVehicle = None
         # Hero actor
         self.hero_actor = None
         self.spawned_hero = None
@@ -691,12 +694,15 @@ class World(object):
         self.show_actor_ids = False
         self.actor_waypoints = dict()
 
-    def _get_data_from_carla(self):
+    def _get_data_from_carla(self, is_load):
         """Retrieves the data from the server side"""
         try:
             self.client = carla.Client(self.args.host, self.args.port)
-            self.client.set_timeout(10)
-            world = self.client.load_world("TOWN06")
+            self.client.set_timeout(20)
+            if is_load:
+                world = self.client.get_world()
+            else:
+                world = self.client.load_world("TOWN06")
 
             new_settings = world.get_settings()
             new_settings.synchronous_mode = True
@@ -711,15 +717,15 @@ class World(object):
             pygame.quit()
             sys.exit()
 
-    def start(self, input_control):
+    def start(self, input_control, is_load):
         """Build the map image, stores the needed modules and prepares rendering in Hero Mode"""
-        self.world, self.town_map = self._get_data_from_carla()
+        self.world, self.town_map = self._get_data_from_carla(is_load)
 
         settings = self.world.get_settings()
         self.world.apply_settings(settings)
 
         # Create Surfaces
-        if self.render:
+        if self.can_render:
             self.map_image = MapImage(
                 carla_world=self.world,
                 carla_map=self.town_map,
@@ -792,7 +798,7 @@ class World(object):
             self.hero_actor = random.choice(hero_vehicles)
             self.hero_transform = self.hero_actor.get_transform()
 
-    def spawn_hero(self, blueprint_filter="vehicle.*", spawn_point=None):
+    def spawn_hero(self, blueprint_filter="vehicle.*", spawn_point=None, vehicle_type=None):
         """Spawns the hero actor when the script runs"""
         # Get a random blueprint.
         blueprint = random.choice(
@@ -807,17 +813,19 @@ class World(object):
         spawn_points = self.world.get_map().get_spawn_points()
         actor = None
         if not spawn_point is None:
-            actor = self.world.spawn_actor(blueprint, spawn_point)
+            try:
+                actor = self.world.spawn_actor(blueprint, spawn_point)
+            except RuntimeError:
+                print("error")
         while actor is None:
             spawn_points = self.world.get_map().get_spawn_points()
             spawn_point = (
                 random.choice(spawn_points) if spawn_points else carla.Transform()
             )
             actor = self.world.try_spawn_actor(blueprint, spawn_point)
-
-        self.hero_actor = actor
-        self.hero_transform = self.hero_actor.get_transform()
-
+        if vehicle_type == Vehicle.V1:
+            self.hero_actor = actor
+            self.hero_transform = self.hero_actor.get_transform()
         return actor
 
     def tick(self, clock):

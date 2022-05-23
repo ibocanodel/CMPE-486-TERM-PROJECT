@@ -1597,7 +1597,7 @@ def main():
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',
-        default='vehicle.*',
+        default='vehicle.audi.tt',
         help='actor filter (default: "vehicle.*")')
     argparser.add_argument(
         '--map',

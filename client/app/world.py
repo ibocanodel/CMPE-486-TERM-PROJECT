@@ -7,6 +7,7 @@ import carla
 import math
 import glob
 import logging
+from .enums import *
 
 from carla import TrafficLightState as tls
 
@@ -32,7 +33,7 @@ class Util(object):
     @staticmethod
     def length(v):
         """Returns the length of a vector"""
-        return math.sqrt(v.x**2 + v.y**2 + v.z**2)
+        return math.sqrt(v.x ** 2 + v.y ** 2 + v.z ** 2)
 
     @staticmethod
     def get_bounding_box(actor):
@@ -109,13 +110,13 @@ class MapImage(object):
     of a Carla town has not changed, it will read and use the stored image if it was rendered in a previous execution"""
 
     def __init__(
-        self,
-        carla_world,
-        carla_map,
-        pixels_per_meter,
-        show_triggers,
-        show_connections,
-        show_spawn_points,
+            self,
+            carla_world,
+            carla_map,
+            pixels_per_meter,
+            show_triggers,
+            show_connections,
+            show_spawn_points,
     ):
         """Renders the map image generated based on the world, its map and additional flags that provide extra information about the road network"""
         self._pixels_per_meter = pixels_per_meter
@@ -127,20 +128,20 @@ class MapImage(object):
         waypoints = carla_map.generate_waypoints(2)
         margin = 50
         max_x = (
-            max(waypoints, key=lambda x: x.transform.location.x).transform.location.x
-            + margin
+                max(waypoints, key=lambda x: x.transform.location.x).transform.location.x
+                + margin
         )
         max_y = (
-            max(waypoints, key=lambda x: x.transform.location.y).transform.location.y
-            + margin
+                max(waypoints, key=lambda x: x.transform.location.y).transform.location.y
+                + margin
         )
         min_x = (
-            min(waypoints, key=lambda x: x.transform.location.x).transform.location.x
-            - margin
+                min(waypoints, key=lambda x: x.transform.location.x).transform.location.x
+                - margin
         )
         min_y = (
-            min(waypoints, key=lambda x: x.transform.location.y).transform.location.y
-            - margin
+                min(waypoints, key=lambda x: x.transform.location.y).transform.location.y
+                - margin
         )
 
         self.width = max(max_x - min_x, max_y - min_y)
@@ -202,7 +203,7 @@ class MapImage(object):
         self.surface = self.big_map_surface
 
     def draw_road_map(
-        self, map_surface, carla_world, carla_map, world_to_pixel, world_to_pixel_width
+            self, map_surface, carla_world, carla_map, world_to_pixel, world_to_pixel_width
     ):
         """Draws all the roads, including lane markings, arrows and traffic signs"""
         map_surface.fill(COLOR_ALUMINIUM_4)
@@ -254,7 +255,7 @@ class MapImage(object):
                 for w in waypoints
             ]
             if lane_marking_type == carla.LaneMarkingType.Broken or (
-                lane_marking_type == carla.LaneMarkingType.Solid
+                    lane_marking_type == carla.LaneMarkingType.Solid
             ):
                 return [(lane_marking_type, lane_marking_color, marking_1)]
             else:
@@ -401,11 +402,11 @@ class MapImage(object):
             )
 
         def draw_traffic_signs(
-            surface,
-            font_surface,
-            actor,
-            color=COLOR_ALUMINIUM_2,
-            trigger_color=COLOR_PLUM_0,
+                surface,
+                font_surface,
+                actor,
+                color=COLOR_ALUMINIUM_2,
+                trigger_color=COLOR_PLUM_0,
         ):
             """Draw stop traffic signs and its bounding box if enabled"""
             transform = actor.get_transform()
@@ -420,10 +421,10 @@ class MapImage(object):
             # Draw line in front of stop
             forward_vector = carla.Location(waypoint.transform.get_forward_vector())
             left_vector = (
-                carla.Location(-forward_vector.y, forward_vector.x, forward_vector.z)
-                * waypoint.lane_width
-                / 2
-                * 0.7
+                    carla.Location(-forward_vector.y, forward_vector.x, forward_vector.z)
+                    * waypoint.lane_width
+                    / 2
+                    * 0.7
             )
 
             line = [
@@ -649,14 +650,14 @@ class MapImage(object):
 class World(object):
     """Class that contains all the information of a carla world that is running on the server side"""
 
-    def __init__(self, args):
+    def __init__(self, args, can_render):
         self.client = None
         self.args = args
         self.fixed_delta_seconds = 0.04
         self.simulation_time = 0
         self.server_clock = pygame.time.Clock()
         self.traffic_manager = None
-
+        self.can_render = can_render
         # World data
         self.world = None
         self.town_map = None
@@ -668,7 +669,9 @@ class World(object):
         self.surface_size = [0, 0]
         self.prev_scaled_size = 0
         self.scaled_size = 0
-
+        self.v1Vehicle = None
+        self.v2Vehicle = None
+        self.heroVehicle = None
         # Hero actor
         self.hero_actor = None
         self.spawned_hero = None
@@ -691,13 +694,16 @@ class World(object):
         self.show_actor_ids = False
         self.actor_waypoints = dict()
 
-    def _get_data_from_carla(self):
+    def _get_data_from_carla(self, is_load):
         """Retrieves the data from the server side"""
         try:
             self.client = carla.Client(self.args.host, self.args.port)
-            self.client.set_timeout(self.args.timeout)
+            self.client.set_timeout(20)
+            if is_load:
+                world = self.client.get_world()
+            else:
+                world = self.client.load_world("TOWN06")
 
-            world = self.client.get_world()
             new_settings = world.get_settings()
             new_settings.synchronous_mode = True
             new_settings.fixed_delta_seconds = self.fixed_delta_seconds
@@ -711,74 +717,75 @@ class World(object):
             pygame.quit()
             sys.exit()
 
-    def start(self, input_control):
+    def start(self, input_control, is_load):
         """Build the map image, stores the needed modules and prepares rendering in Hero Mode"""
-        self.world, self.town_map = self._get_data_from_carla()
+        self.world, self.town_map = self._get_data_from_carla(is_load)
 
         settings = self.world.get_settings()
         self.world.apply_settings(settings)
 
         # Create Surfaces
-        self.map_image = MapImage(
-            carla_world=self.world,
-            carla_map=self.town_map,
-            pixels_per_meter=PIXELS_PER_METER,
-            show_triggers=False,
-            show_connections=False,
-            show_spawn_points=False,
-        )
+        if self.can_render:
+            self.map_image = MapImage(
+                carla_world=self.world,
+                carla_map=self.town_map,
+                pixels_per_meter=PIXELS_PER_METER,
+                show_triggers=False,
+                show_connections=False,
+                show_spawn_points=False,
+            )
 
-        self._input = input_control
+            self._input = input_control
 
-        self.original_surface_size = min(self.dim[0], self.dim[1])
-        self.surface_size = self.map_image.big_map_surface.get_width()
+            self.original_surface_size = min(self.dim[0], self.dim[1])
+            self.surface_size = self.map_image.big_map_surface.get_width()
 
-        self.scaled_size = int(self.surface_size)
-        self.prev_scaled_size = int(self.surface_size)
+            self.scaled_size = int(self.surface_size)
+            self.prev_scaled_size = int(self.surface_size)
 
-        # Render Actors
-        self.actors_surface = pygame.Surface(
-            (self.map_image.surface.get_width(), self.map_image.surface.get_height())
-        )
-        self.actors_surface.set_colorkey(COLOR_BLACK)
+            # Render Actors
+            self.actors_surface = pygame.Surface(
+                (self.map_image.surface.get_width(), self.map_image.surface.get_height())
+            )
+            self.actors_surface.set_colorkey(COLOR_BLACK)
 
-        self.vehicle_id_surface = pygame.Surface(
-            (self.surface_size, self.surface_size)
-        ).convert()
-        self.vehicle_id_surface.set_colorkey(COLOR_BLACK)
+            self.vehicle_id_surface = pygame.Surface(
+                (self.surface_size, self.surface_size)
+            ).convert()
+            self.vehicle_id_surface.set_colorkey(COLOR_BLACK)
 
-        self.border_round_surface = pygame.Surface(self.dim, pygame.SRCALPHA).convert()
-        self.border_round_surface.set_colorkey(COLOR_WHITE)
-        self.border_round_surface.fill(COLOR_BLACK)
+            self.border_round_surface = pygame.Surface(self.dim, pygame.SRCALPHA).convert()
+            self.border_round_surface.set_colorkey(COLOR_WHITE)
+            self.border_round_surface.fill(COLOR_BLACK)
 
-        # Used for Hero Mode, draws the map contained in a circle with white border
-        center_offset = (int(self.dim[0] / 2), int(self.dim[1] / 2))
-        pygame.draw.circle(
-            self.border_round_surface,
-            COLOR_ALUMINIUM_1,
-            center_offset,
-            int(self.dim[1] / 2),
-        )
-        pygame.draw.circle(
-            self.border_round_surface,
-            COLOR_WHITE,
-            center_offset,
-            int((self.dim[1] - 8) / 2),
-        )
+            # Used for Hero Mode, draws the map contained in a circle with white border
+            center_offset = (int(self.dim[0] / 2), int(self.dim[1] / 2))
+            pygame.draw.circle(
+                self.border_round_surface,
+                COLOR_ALUMINIUM_1,
+                center_offset,
+                int(self.dim[1] / 2),
+            )
+            pygame.draw.circle(
+                self.border_round_surface,
+                COLOR_WHITE,
+                center_offset,
+                int((self.dim[1] - 8) / 2),
+            )
 
-        scaled_original_size = self.original_surface_size * (1.0 / 0.9)
-        self.hero_surface = pygame.Surface(
-            (scaled_original_size, scaled_original_size)
-        ).convert()
+            scaled_original_size = self.original_surface_size * (1.0 / 0.9)
+            self.hero_surface = pygame.Surface(
+                (scaled_original_size, scaled_original_size)
+            ).convert()
 
-        self.result_surface = pygame.Surface(
-            (self.surface_size, self.surface_size)
-        ).convert()
-        self.result_surface.set_colorkey(COLOR_BLACK)
+            self.result_surface = pygame.Surface(
+                (self.surface_size, self.surface_size)
+            ).convert()
+            self.result_surface.set_colorkey(COLOR_BLACK)
 
-        self._input.wheel_offset = HERO_DEFAULT_SCALE
+            self._input.wheel_offset = HERO_DEFAULT_SCALE
 
-        self.traffic_manager = self.client.get_trafficmanager(port=self.args.tm_port)
+            self.traffic_manager = self.client.get_trafficmanager(port=self.args.tm_port)
 
     def select_hero_actor(self):
         """Selects only one hero actor if there are more than one. If there are not any, it will spawn one."""
@@ -791,7 +798,7 @@ class World(object):
             self.hero_actor = random.choice(hero_vehicles)
             self.hero_transform = self.hero_actor.get_transform()
 
-    def spawn_hero(self, blueprint_filter="vehicle.*", spawn_point=None):
+    def spawn_hero(self, blueprint_filter="vehicle.*", spawn_point=None, vehicle_type=None):
         """Spawns the hero actor when the script runs"""
         # Get a random blueprint.
         blueprint = random.choice(
@@ -803,19 +810,22 @@ class World(object):
             blueprint.set_attribute("color", color)
 
         # Spawn the player.
+        spawn_points = self.world.get_map().get_spawn_points()
         actor = None
         if not spawn_point is None:
-            actor = self.world.spawn_actor(blueprint, spawn_point)
+            try:
+                actor = self.world.spawn_actor(blueprint, spawn_point)
+            except RuntimeError:
+                print("error")
         while actor is None:
             spawn_points = self.world.get_map().get_spawn_points()
             spawn_point = (
                 random.choice(spawn_points) if spawn_points else carla.Transform()
             )
             actor = self.world.try_spawn_actor(blueprint, spawn_point)
-
-        self.hero_actor = actor
-        self.hero_transform = self.hero_actor.get_transform()
-
+        if vehicle_type == Vehicle.V1:
+            self.hero_actor = actor
+            self.hero_transform = self.hero_actor.get_transform()
         return actor
 
     def tick(self, clock):
@@ -884,7 +894,7 @@ class World(object):
             surface.blit(srf, srf.get_rect(center=pos))
 
     def _render_speed_limits(
-        self, surface, list_sl, world_to_pixel, world_to_pixel_width
+            self, surface, list_sl, world_to_pixel, world_to_pixel_width
     ):
         """Renders the speed limits by drawing two concentric circles (outer is red and inner white) and a speed limit text"""
 
@@ -975,12 +985,12 @@ class World(object):
                 )
 
     def render_vehicles_ids(
-        self,
-        vehicle_id_surface,
-        list_actors,
-        world_to_pixel,
-        hero_actor,
-        hero_transform,
+            self,
+            vehicle_id_surface,
+            list_actors,
+            world_to_pixel,
+            hero_actor,
+            hero_transform,
     ):
         """When flag enabled, it shows the IDs of the vehicles that are spawned in the world. Depending on the vehicle type,
         it will render it in different colors"""
@@ -1118,9 +1128,9 @@ class World(object):
                 - self.hero_surface.get_width() / 2
                 + hero_front.x * PIXELS_AHEAD_VEHICLE,
                 (
-                    hero_location_screen[1]
-                    - self.hero_surface.get_height() / 2
-                    + hero_front.y * PIXELS_AHEAD_VEHICLE
+                        hero_location_screen[1]
+                        - self.hero_surface.get_height() / 2
+                        + hero_front.y * PIXELS_AHEAD_VEHICLE
                 ),
             )
 

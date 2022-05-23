@@ -1,10 +1,13 @@
 # Originally adapted from https://github.com/thomasfermi/Algorithms-for-Automated-Driving
 import math
+
 import numpy as np
+from .utils import *
+
 
 # Function from https://stackoverflow.com/a/59582674/2609987
 def circle_line_segment_intersection(
-    circle_center, circle_radius, pt1, pt2, full_line=True, tangent_tol=1e-9
+        circle_center, circle_radius, pt1, pt2, full_line=True, tangent_tol=1e-9
 ):
     """Find the points at which a circle intersects a line-segment.  This can happen at 0, 1, or 2 points.
     :param circle_center: The (x, y) location of the circle center
@@ -20,9 +23,9 @@ def circle_line_segment_intersection(
     (p1x, p1y), (p2x, p2y), (cx, cy) = pt1, pt2, circle_center
     (x1, y1), (x2, y2) = (p1x - cx, p1y - cy), (p2x - cx, p2y - cy)
     dx, dy = (x2 - x1), (y2 - y1)
-    dr = (dx**2 + dy**2) ** 0.5
+    dr = (dx ** 2 + dy ** 2) ** 0.5
     big_d = x1 * y2 - x2 * y1
-    discriminant = circle_radius**2 * dr**2 - big_d**2
+    discriminant = circle_radius ** 2 * dr ** 2 - big_d ** 2
 
     if discriminant < 0:  # No intersection between circle and line
         return []
@@ -30,14 +33,14 @@ def circle_line_segment_intersection(
         intersections = [
             (
                 cx
-                + (big_d * dy + sign * (-1 if dy < 0 else 1) * dx * discriminant**0.5)
-                / dr**2,
-                cy + (-big_d * dx + sign * abs(dy) * discriminant**0.5) / dr**2,
+                + (big_d * dy + sign * (-1 if dy < 0 else 1) * dx * discriminant ** 0.5)
+                / dr ** 2,
+                cy + (-big_d * dx + sign * abs(dy) * discriminant ** 0.5) / dr ** 2,
             )
             for sign in ((1, -1) if dy < 0 else (-1, 1))
         ]  # This makes sure the order along the segment is correct
         if (
-            not full_line
+                not full_line
         ):  # If only considering the segment, filter out intersections that do not fall within the segment
             fraction_along_segment = [
                 (xi - p1x) / dx if abs(dx) > abs(dy) else (yi - p1y) / dy
@@ -49,7 +52,7 @@ def circle_line_segment_intersection(
                 if 0 <= frac <= 1
             ]
         if (
-            len(intersections) == 2 and abs(discriminant) <= tangent_tol
+                len(intersections) == 2 and abs(discriminant) <= tangent_tol
         ):  # If line is tangent to circle, return just one point (as both intersections have same location)
             return [intersections[0]]
         else:
@@ -100,7 +103,7 @@ class PurePursuit:
 
         track_point = get_target_point(look_ahead_distance, waypoints)
         if track_point is None:
-            raise RuntimeError
+            raise EndOfRoadException
 
         alpha = np.arctan2(track_point[1], track_point[0])
 
@@ -121,7 +124,10 @@ class PIDController:
 
     def get_control(self, target, measurement, dt):
         error = target - measurement
+        if error < 0:
+            return 0
         self.int_term += error * self.Ki * dt
+
         if self.last_error is not None:
             self.derivative_term = (error - self.last_error) / dt * self.Kd
         self.last_error = error
@@ -130,12 +136,11 @@ class PIDController:
 
 class PurePursuitController:
     def __init__(
-        self,
-        pure_pursuit=PurePursuit(),
-        pid=PIDController(Kp=0.25, Ki=0.04, Kd=0),
+            self,
+            pure_pursuit=PurePursuit(),
     ):
-        self.pure_pursuit = pure_pursuit
-        self.pid = pid
+        self.pure_pursuit = PurePursuit()
+        self.pid = PIDController(Kp=0.25, Ki=0.1, Kd=0)
 
     def get_control(self, actor, waypoints, target_speed, dt):
 
@@ -152,12 +157,15 @@ class PurePursuitController:
         # Translate absolute waypoints to actor's frame  filter
         # And discard waypoints behind the actor
         relative_points = [np.array([0, 0])]
+        my_relative_points = []
         for wp in waypoints:
             point = np.matmul(np.array([wp.x - p.x, wp.y - p.y]), R)
             if point[0] > 0:
                 relative_points.append(point)
-
+                my_relative_points.append(wp)
         accel = self.pid.get_control(target_speed, current_speed, dt)
+
         steer = self.pure_pursuit.get_control(relative_points, current_speed)
 
-        return accel, steer
+        return accel, steer, my_relative_points
+

@@ -132,6 +132,7 @@ def generate_acc_table(simulation_count_straight, simulation_count_curved):
         str += get_table_row_acc(data[i], i)
     open_and_write_to_file_start_upper("docs/straight_acc.md", str, "w")
     data = sort_accs(RoadType.Curved, simulation_count_curved)
+    data.sort(key=get_simNo)
     str = "## Curved road simulation acc data\n\n"
     str += "|SimulationNumber|Max acc| \n"
     str += "|---|---|\n"

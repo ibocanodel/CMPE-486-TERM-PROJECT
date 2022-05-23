@@ -189,13 +189,13 @@ def main():
     argparser.add_argument(
         "--sCount",
         type=int,
-        default=10,
+        default=25,
         help="Number of straight road simulations"
     )
     argparser.add_argument(
         "--cCount",
         type=int,
-        default=10,
+        default=25,
         help="Number of curved road simulations"
     )
     argparser.add_argument(

@@ -2,8 +2,10 @@ import json
 import math
 import os.path
 from pathlib import Path
+from random import random
 
 import carla
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
@@ -24,6 +26,8 @@ def removeFiles():
     removeFile(get_file_name(get_file_name_upper("docs/straight_acc.md")))
     removeFile(get_file_name(get_file_name_upper("docs/straight_int.md")))
     removeFile(get_file_name(get_file_name_upper("docs/straight_speed.md")))
+    removeFile(get_file_name(get_file_name_upper("docs/plot_Straight.png")))
+    removeFile(get_file_name(get_file_name_upper("docs/plot_Curved.png")))
     removeDataFiles()
 
 
@@ -195,9 +199,11 @@ class PlotData(object):
 
 
 def plot_top_n_accs(road_type, top_n, sim_count):
+    plt.figure()
     data = sort_accs(road_type, sim_count)
     ax = plt.gca()
     plt.scatter([d.simNo for d in data[0:top_n]], [d.acc for d in data[0:top_n]])
+    plt.xticks(np.arange(1, sim_count+1, 1))
     plt.xlabel("Sim Number")
     plt.ylabel("Acceleration (m/s)")
     plt.savefig("docs/plot_" + road_type.name + ".png")

@@ -119,15 +119,19 @@ class InfoBar(object):
         """Shows fading texts for some specified seconds"""
         self._notifications.set_text(text, seconds=seconds)
 
-    def tick(self, clock,v1):
+    def tick(self, clock):
         hero_mode_text = []
         if self.world.hero_actor is not None:
             hero_speed = self.world.hero_actor.get_velocity()
             hero_speed_text = 3.6 * math.sqrt(
                 hero_speed.x**2 + hero_speed.y**2 + hero_speed.z**2
             )
-            v1_speed = v1.actor.get_velocity()
+            v1_speed = self.world.v1Vehicle.actor.get_velocity()
             v1_speed_text = 3.6 * math.sqrt(
+                v1_speed.x ** 2 + v1_speed.y ** 2 + v1_speed.z ** 2
+            )
+            v2_speed = self.world.v2Vehicle.actor.get_velocity()
+            v2_speed_text = 3.6 * math.sqrt(
                 v1_speed.x ** 2 + v1_speed.y ** 2 + v1_speed.z ** 2
             )
             affected_traffic_light_text = "None"
@@ -151,7 +155,9 @@ class InfoBar(object):
                 "Ego Speed:           %3d km/h" % hero_speed_text,
                 "Ego Location:        %14s" % self.world.hero_actor.get_location(),
                 "V1 Speed:           %3d km/h" % v1_speed_text,
-                "V1 Location:        %14s" % v1.actor.get_location(),
+                "V1 Location:        %14s" % self.world.v1Vehicle.actor.get_location(),
+                "V2 Speed:           %3d km/h" % v2_speed_text,
+                "V2 Location:        %14s" % self.world.v2Vehicle.actor.get_location(),
 
                 # 'Hero Affected by:',
                 # '  Traffic Light: %12s' % affected_traffic_light_text,

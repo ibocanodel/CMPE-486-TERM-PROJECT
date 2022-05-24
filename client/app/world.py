@@ -699,10 +699,8 @@ class World(object):
         try:
             self.client = carla.Client(self.args.host, self.args.port)
             self.client.set_timeout(20)
-            if is_load:
-                world = self.client.get_world()
-            else:
-                world = self.client.load_world("TOWN06")
+
+            world = self.client.load_world("TOWN06")
 
             new_settings = world.get_settings()
             new_settings.synchronous_mode = True
@@ -823,9 +821,9 @@ class World(object):
                 random.choice(spawn_points) if spawn_points else carla.Transform()
             )
             actor = self.world.try_spawn_actor(blueprint, spawn_point)
-        if vehicle_type == Vehicle.V1:
-            self.hero_actor = actor
-            self.hero_transform = self.hero_actor.get_transform()
+
+        self.hero_actor = actor
+        self.hero_transform = self.hero_actor.get_transform()
         return actor
 
     def tick(self, clock):

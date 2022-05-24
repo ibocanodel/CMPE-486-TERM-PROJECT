@@ -16,9 +16,6 @@ from .Hero import Hero
 from .Vehicle2 import Vehicle2
 
 
-
-
-
 def game_loop(args, sim_no, road_type, render):
     """Initialized, Starts and runs all the needed modules for No Rendering Mode"""
     try:
@@ -53,7 +50,7 @@ def game_loop(args, sim_no, road_type, render):
         # For each module, assign other modules that are going to be used inside that module
         hud.start(world)
         input_control.start(hud, world)
-        world.start(input_control, sim_no == 0)
+        world.start(input_control, sim_no != 0)
         v1_input, v2_input, hero_input = get_files_and_set_speeds(road_type, sim_no)
         v2.start(world, v2_input)
         v1.start(world, v1_input, v2_input["speed"])
@@ -69,7 +66,7 @@ def game_loop(args, sim_no, road_type, render):
             v1.tick(clock)
             v2.tick(clock)
             hero.tick(clock)
-            hud.tick(clock, v1)
+            hud.tick(clock)
             input_control.tick(clock)
 
             # Render all modules
@@ -225,13 +222,13 @@ def main():
 
     # Parse arguments
     try:
-        removeFiles()
+        # removeFiles()
         args = argparser.parse_args()
         args.description = "BounCMPE CarlaSim 2D Visualizer"
         args.width, args.height = [int(x) for x in args.res.split("x")]
         sim_type_straight = parse_sim_type(args.simTypeStraight)
         sim_type_curved = parse_sim_type(args.simTypeCurved)
-        # Run game loop
+        # # Run game loop
         simulation_count_straight = args.sCount
         simulation_count_curved = args.cCount
         straight_plot_count = args.straightPlotNumber
@@ -241,7 +238,7 @@ def main():
             for i in range(simulation_count_straight):
                 game_loop(args, i, RoadType.Straight, sim_type_straight == SimulationType.allRender)
         else:
-            straight_options = parse_sim_options(args.straightOpt.split(), simulation_count_straight)
+            straight_options = parse_sim_options(args.straightOpt, simulation_count_straight)
             for i in range(simulation_count_straight):
                 game_loop(args, i, RoadType.Straight, i in straight_options)
 
@@ -251,9 +248,9 @@ def main():
             for i in range(simulation_count_curved):
                 game_loop(args, i, RoadType.Curved, sim_type_curved == SimulationType.allRender)
         else:
-            curved_options = parse_sim_options(args.curvedOpt.split(), simulation_count_curved)
+            curved_options = parse_sim_options(args.curvedOpt, simulation_count_curved)
             for i in range(simulation_count_curved):
-                game_loop(args, i, RoadType.Straight, i in straight_options)
+                game_loop(args, i, RoadType.Straight, i in curved_options)
         closeFiles()
         plot_top_n_accs(RoadType.Straight, straight_plot_count, simulation_count_straight)
         plot_top_n_accs(RoadType.Curved, curved_plot_count, simulation_count_curved)

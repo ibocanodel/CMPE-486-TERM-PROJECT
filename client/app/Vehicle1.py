@@ -44,7 +44,7 @@ class Vehicle1(object):
         self.target_speed = input["speed"]  # meters per second
         self.controller = PurePursuitController()
 
-        self.world.register_actor_waypoints_to_draw(self.actor, self.waypoints)
+        # self.world.register_actor_waypoints_to_draw(self.actor, self.waypoints)
         # self.actor.set_autopilot(True, world.args.tm_port)
 
     def tick(self, clock):
@@ -95,7 +95,7 @@ class Vehicle1(object):
                                                                                                             0].y, 0.3)
         self.waypoints.append(locPoint)
         self.waypoints.sort(key=self.get_x, reverse=not straight)
-        self.world.register_actor_waypoints_to_draw(self.actor, self.waypoints)
+        # self.world.register_actor_waypoints_to_draw(self.actor, self.waypoints)
         self.turnPoint = locPoint
         self.road_adjusted = True
 
